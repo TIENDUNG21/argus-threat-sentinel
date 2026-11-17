@@ -56,3 +56,19 @@ def test_write_json_round_trips(scan_result: ScanResult, tmp_path: Path) -> None
     loaded = json.loads(path.read_text(encoding="utf-8"))
     assert loaded["summary"]["incidents"] == len(scan_result.incidents)
     assert loaded["anomalies"] == build_json(scan_result)["anomalies"]
+
+
+def test_two_scans_of_the_same_input_give_identical_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from argus.pipeline import scan
+    from argus.simulate import ACCESS_LOG, AUTH_LOG, simulate, write_simulation
+
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", "1772409600")
+    files = write_simulation(simulate(5, visitors_per_day=40), tmp_path / "logs")
+    outputs = []
+    for run in range(2):
+        out = tmp_path / f"run{run}.json"
+        write_json(scan([files[ACCESS_LOG], files[AUTH_LOG]]), out)
+        outputs.append(out.read_bytes())
+    assert outputs[0] == outputs[1]
