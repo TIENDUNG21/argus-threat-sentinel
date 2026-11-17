@@ -56,7 +56,7 @@ extend-ignore-names = ["X"]
 [tool.mypy]
 strict = true
 python_version = "3.11"
-files = ["src", "tests"]
+files = ["src", "tests", "scripts"]
 mypy_path = "src"
 
 [tool.pytest.ini_options]

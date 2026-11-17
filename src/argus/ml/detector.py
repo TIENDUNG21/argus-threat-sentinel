@@ -8,7 +8,7 @@ from datetime import datetime
 
 import numpy as np
 
-from argus.events import Event
+from argus.events import SSH, WEB, Event
 from argus.ml.explain import attributions
 from argus.ml.features import build_features
 from argus.ml.iforest import IsolationForest
@@ -23,6 +23,15 @@ class AnomalyConfig:
     min_events: int = 5
     min_actors: int = 8
     top_features: int = 3
+    sources: tuple[str, ...] = (WEB,)
+    """Sources to model. SSH is opt-in: on an internet-facing SSH port most
+    addresses are attackers, so "anomalies are rare" does not hold there (see
+    docs/EVALUATION.md)."""
+
+    def __post_init__(self) -> None:
+        unknown = set(self.sources) - {WEB, SSH}
+        if unknown:
+            raise ValueError(f"sources must be 'web' and/or 'ssh', got {sorted(unknown)}")
 
 
 @dataclass(frozen=True)
@@ -69,6 +78,8 @@ def detect_anomalies(
     anomalies: list[Anomaly] = []
     summaries: list[ModelSummary] = []
     for source, matrix in sorted(build_features(events, min_events=config.min_events).items()):
+        if source not in config.sources:
+            continue
         actors = len(matrix.actors)
         if actors < config.min_actors:
             summaries.append(ModelSummary(source, actors, matrix.skipped, config.threshold))

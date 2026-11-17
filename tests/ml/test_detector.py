@@ -5,7 +5,7 @@ from argus.events import Event
 from argus.ml.detector import AnomalyConfig, detect_anomalies
 from argus.ml.explain import attributions
 from argus.ml.iforest import IsolationForest
-from tests.helpers import web
+from tests.helpers import ssh, web
 
 
 def test_attribution_points_at_the_feature_that_isolates() -> None:
@@ -84,3 +84,24 @@ def test_too_few_actors_means_no_model() -> None:
 
 def test_no_events() -> None:
     assert detect_anomalies([], AnomalyConfig()) == ([], [])
+
+
+def ssh_actors(count: int) -> list[Event]:
+    return [
+        ssh("failed_password", t=i * 7 + n, ip=f"198.18.70.{i}", user=f"u{n}")
+        for i in range(count)
+        for n in range(6)
+    ]
+
+
+def test_ssh_model_is_opt_in() -> None:
+    events = ssh_actors(20)
+    assert detect_anomalies(events, AnomalyConfig()) == ([], [])
+    _, summaries = detect_anomalies(events, AnomalyConfig(sources=("web", "ssh")))
+    assert [summary.source for summary in summaries] == ["ssh"]
+    assert len(summaries[0].scores) == 20
+
+
+def test_unknown_source_is_rejected() -> None:
+    with pytest.raises(ValueError, match="sources"):
+        AnomalyConfig(sources=("ftp",))
