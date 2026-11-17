@@ -3,6 +3,8 @@
 [![CI](https://github.com/TIENDUNG21/argus-threat-sentinel/actions/workflows/ci.yml/badge.svg)](https://github.com/TIENDUNG21/argus-threat-sentinel/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-informational)](LICENSE)
 
+<p align="center"><img src="assets/banner.svg" width="100%" alt="Animated diagram: repeated failed logins in an access log raise a T1110 brute-force alert, and one client stands out in the Isolation Forest view"></p>
+
 Argus reads nginx/Apache access logs and OpenSSH auth logs, runs 25 detection
 rules mapped to MITRE ATT&CK plus an Isolation Forest over per-client
 behaviour, and groups what it finds into scored incidents.
