@@ -75,7 +75,8 @@ def format_alert(alert: Alert, *, color: bool = False) -> str:
     """One line per alert, for ``argus tail``."""
     actors = sorted(alert.actors)
     who = actors[0] + (f" +{len(actors) - 1}" if len(actors) > 1 else "")
+    events = f"{alert.count:,} event" + ("" if alert.count == 1 else "s")
     return (
-        f"{iso(alert.fired_ts)}  {_level(alert.severity, color=color)}  {alert.rule.id}  "
-        f"{who}  {alert.rule.title} ({alert.count:,} events, {alert.rule.technique})"
+        f"{alert.fired_ts:%Y-%m-%dT%H:%M:%SZ}  {_level(alert.severity, color=color)}  "
+        f"{alert.rule.id}  {who}  {alert.rule.title} ({events}, {alert.rule.technique})"
     )

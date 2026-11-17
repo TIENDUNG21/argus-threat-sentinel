@@ -30,4 +30,5 @@ def test_format_alert(scan_result: ScanResult) -> None:
     line = format_alert(alert)
     assert alert.rule.id in line
     assert alert.rule.technique in line
-    assert line.startswith(f"{alert.fired_ts:%Y-%m-%dT%H:%M:%S}")
+    assert line.startswith(f"{alert.fired_ts:%Y-%m-%dT%H:%M:%S}Z  ")
+    assert f"({alert.count:,} event" in line
