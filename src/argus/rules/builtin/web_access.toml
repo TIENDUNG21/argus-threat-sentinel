@@ -1,0 +1,65 @@
+# Web shells, credential attacks and floods against web applications.
+
+[[rule]]
+id = "web-shell-known-name"
+title = "Request for a known web shell file"
+severity = "medium"
+technique = "T1505.003"
+source = "web"
+description = """
+A request for a file name used by well-known web shells (c99, r57, WSO, b374k,
+Alfa, ...). Usually a bot looking for shells left by someone else; a 200
+response means one may exist on the server."""
+when = '''path ~ "(?i)/(c99|c100|r57|wso|wso2|b374k|alfa|alfa-rex|alfacgiapi|shell|webshell|cmd|indoxploit|priv8|leafmailer|marijuana)\.(php\d?|phtml|jsp|jspx|aspx?|ashx)$"'''
+
+[[rule]]
+id = "web-shell-upload-exec"
+title = "Script executed from an upload directory"
+severity = "high"
+technique = "T1505.003"
+source = "web"
+description = """
+A server-side script (.php, .jsp, .aspx, ...) under an upload, image or media
+directory answered with 200. Upload folders hold user content; executable code
+there is the usual footprint of an uploaded web shell."""
+when = '''status == 200 and path ~ "(?i)/(uploads?|images?|img|media|files|tmp|temp|assets|static|avatars?)/(.*/)?[^/]+\.(php\d?|phtml|phar|jsp|jspx|aspx?|cgi|pl)$"'''
+
+[[rule]]
+id = "web-login-brute-force"
+title = "Web login brute force"
+severity = "medium"
+technique = "T1110"
+source = "web"
+description = """
+Fifteen or more failed logins from one address within five minutes (POST to a
+login endpoint answered with 401/403, or wp-login.php / xmlrpc.php, which answer
+200 on failure). Access logs do not show the user name, so this maps to the
+parent technique."""
+when = '''method == "POST" and path ~ "(?i)^/(login|signin|sign-in|log-in|wp-login\.php|xmlrpc\.php|user/login|users/sign_in|admin/login|account/login|auth/login|api/(v\d+/)?(auth/)?login|session|sessions)/?$" and (status in [401, 403] or (status == 200 and path ~ "(?i)/(wp-login|xmlrpc)\.php$"))'''
+threshold = { count = 15, window = "5m" }
+
+[[rule]]
+id = "web-credential-stuffing"
+title = "Distributed credential stuffing"
+severity = "high"
+technique = "T1110.004"
+source = "web"
+description = """
+Failed logins from eight or more different addresses sharing one User-Agent
+within ten minutes: a botnet or proxy pool replaying leaked username/password
+pairs, each address staying under per-address limits."""
+when = '''method == "POST" and path ~ "(?i)^/(login|signin|sign-in|log-in|wp-login\.php|user/login|users/sign_in|admin/login|account/login|auth/login|api/(v\d+/)?(auth/)?login|session|sessions)/?$" and status in [401, 403]'''
+group_by = ["user_agent"]
+threshold = { count = 8, window = "10m", distinct = "ip" }
+
+[[rule]]
+id = "web-request-flood"
+title = "HTTP request flood"
+severity = "medium"
+technique = "T1499.002"
+source = "web"
+description = """
+Three hundred or more requests from one address within one minute, far above
+what a browser or a polite crawler sends: an application-layer flood or an
+aggressive tool."""
+threshold = { count = 300, window = "1m" }
