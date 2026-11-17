@@ -1,0 +1,94 @@
+# Detections for OpenSSH authentication logs.
+
+[[rule]]
+id = "ssh-brute-force"
+title = "SSH password brute force"
+severity = "medium"
+technique = "T1110.001"
+source = "ssh"
+description = """
+Ten or more failed password attempts from one address within five minutes.
+People mistype a password once or twice; guessing tools keep going."""
+when = 'action == "failed_password"'
+threshold = { count = 10, window = "5m" }
+
+[[rule]]
+id = "ssh-password-spray"
+title = "SSH password spraying"
+severity = "medium"
+technique = "T1110.003"
+source = "ssh"
+description = """
+Failed passwords for six or more different user names from one address within
+fifteen minutes: a few common passwords tried against many accounts."""
+when = 'action == "failed_password"'
+threshold = { count = 6, window = "15m", distinct = "user" }
+
+[[rule]]
+id = "ssh-brute-force-success"
+title = "SSH login succeeded after repeated failures"
+severity = "critical"
+technique = "T1110.001"
+source = "ssh"
+description = """
+At least five failed passwords followed by a successful login from the same
+address within thirty minutes. The guessing probably worked: treat the account
+as compromised."""
+
+[rule.sequence]
+within = "30m"
+steps = [
+  { when = 'action == "failed_password"', count = 5 },
+  { when = 'action startswith "accepted"' },
+]
+
+[[rule]]
+id = "ssh-root-login"
+title = "Direct root login over SSH"
+severity = "high"
+technique = "T1078.003"
+source = "ssh"
+description = """
+A successful SSH login as root. Hardened servers disable this
+(PermitRootLogin no); when it happens it is either a policy gap or an attacker
+holding the root password or key."""
+when = 'action startswith "accepted" and user == "root"'
+
+[[rule]]
+id = "ssh-new-source-for-user"
+title = "Account logged in from a new address"
+severity = "medium"
+technique = "T1078"
+source = "ssh"
+description = """
+After a 24-hour learning period, a successful login for a user from an address
+that user has not logged in from before. Travel and new laptops cause these too;
+combined with other alerts it often marks stolen credentials."""
+when = 'action startswith "accepted"'
+group_by = ["user"]
+new_value = { field = "ip", learn = "24h" }
+
+[[rule]]
+id = "ssh-banner-scan"
+title = "SSH banner grabbing"
+severity = "low"
+technique = "T1595.001"
+source = "ssh"
+description = """
+Three or more connections within two minutes that never complete the SSH
+handshake (no identification string or an invalid banner): typical of port
+scanners collecting server versions. A TCP health check every few minutes stays
+below the threshold."""
+when = 'action in ["no_ident", "bad_banner"]'
+threshold = { count = 3, window = "2m" }
+
+[[rule]]
+id = "ssh-max-auth-exceeded"
+title = "SSH maximum authentication attempts exceeded"
+severity = "medium"
+technique = "T1110.001"
+source = "ssh"
+description = """
+sshd closed a connection because the client used up MaxAuthTries in one
+session, which interactive users rarely do."""
+when = 'action == "max_auth_exceeded"'
