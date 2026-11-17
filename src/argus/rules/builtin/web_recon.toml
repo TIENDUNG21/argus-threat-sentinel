@@ -1,0 +1,65 @@
+# Reconnaissance against web servers (nginx/Apache access logs).
+
+[[rule]]
+id = "web-scanner-user-agent"
+title = "Vulnerability scanner user agent"
+severity = "medium"
+technique = "T1595.002"
+source = "web"
+description = """
+The User-Agent names a well-known vulnerability scanner or fuzzer (sqlmap,
+Nikto, Nuclei, WPScan, gobuster, ffuf, ...). Careful attackers change it, so
+absence of this alert proves little; presence is a reliable signal."""
+when = '''user_agent ~ "(?i)(sqlmap|nikto|nuclei|wpscan|gobuster|dirbuster|feroxbuster|ffuf|fuzz faster u fool|wfuzz|masscan|zgrab|nmap scripting engine|acunetix|nessus|openvas|w3af|arachni|whatweb|jaeles|zmeu)"'''
+
+[[rule]]
+id = "web-wordlist-scan"
+title = "Burst of 404s across many paths"
+severity = "medium"
+technique = "T1595.003"
+source = "web"
+description = """
+Twenty or more different paths answered with 404 for one address within two
+minutes: content discovery with a wordlist (dirbuster-style). A broken link
+produces many 404s for the same path, which does not count."""
+when = 'status == 404'
+threshold = { count = 20, window = "2m", distinct = "path" }
+
+[[rule]]
+id = "web-sensitive-file-probe"
+title = "Probing for secrets and backup files"
+severity = "medium"
+technique = "T1595.003"
+source = "web"
+description = """
+Requests for three or more different files that should never be public
+(.env, .git/config, cloud credentials, SSH keys, database dumps, config
+backups, phpinfo) from one address within ten minutes."""
+when = '''uri ~ "(?i)^[^?]*/(\.env(\.[a-z0-9_-]+)?|\.git/(config|HEAD|index)|\.svn/(entries|wc\.db)|\.hg/hgrc|\.aws/credentials|\.ssh/(id_rsa|id_ed25519|authorized_keys)|\.htpasswd|\.DS_Store|\.npmrc|\.dockercfg|\.docker/config\.json|wp-config\.php(\.bak|\.old|\.save|\.orig|~)|config\.php(\.bak|~)|(backup|dump|database|db)\.(sql|sql\.gz|zip|tar\.gz)|phpinfo\.php|server-status|actuator/(env|heapdump))(\?|$)"'''
+threshold = { count = 3, window = "10m", distinct = "path" }
+
+[[rule]]
+id = "web-sensitive-file-exposed"
+title = "Credential-bearing file served successfully"
+severity = "high"
+technique = "T1552.001"
+source = "web"
+description = """
+A file that usually holds credentials (.env, .git/config, cloud or SSH keys,
+config backups, database dumps) was answered with 200 and a non-empty body.
+Rotate whatever it contains. Single-page apps that answer every path with
+index.html can trigger this; check the response size."""
+when = '''status == 200 and bytes > 0 and uri ~ "(?i)^[^?]*/(\.env(\.[a-z0-9_-]+)?|\.git/config|\.aws/credentials|\.ssh/(id_rsa|id_ed25519)|\.htpasswd|\.npmrc|\.dockercfg|\.docker/config\.json|wp-config\.php(\.bak|\.old|\.save|\.orig|~)|config\.php(\.bak|~)|(backup|dump|database|db)\.(sql|sql\.gz|zip|tar\.gz))(\?|$)"'''
+
+[[rule]]
+id = "web-user-enumeration"
+title = "WordPress user enumeration"
+severity = "low"
+technique = "T1589"
+source = "web"
+description = """
+Three or more requests within ten minutes that list site accounts through
+author archives (?author=N) or the WordPress users API: harvesting user names
+for later password attacks."""
+when = '''uri ~ "(?i)(^/\?author=\d+|^/wp-json/wp/v2/users|[?&]rest_route=/wp/v2/users)"'''
+threshold = { count = 3, window = "10m", distinct = "uri" }
