@@ -11,14 +11,24 @@ from collections.abc import Iterable
 
 from argus.alerts import Alert
 from argus.events import Event
-from argus.rules.detectors import AlertFactory, Detector, ThresholdDetector
-from argus.rules.model import Rule, Threshold
+from argus.rules.detectors import (
+    AlertFactory,
+    Detector,
+    NewValueDetector,
+    SequenceDetector,
+    ThresholdDetector,
+)
+from argus.rules.model import NewValue, Rule, Sequence, Threshold
 
 
 def make_detector(rule: Rule, factory: AlertFactory) -> Detector:
     kind = rule.kind
     if isinstance(kind, Threshold):
         return ThresholdDetector(rule, kind, factory)
+    if isinstance(kind, Sequence):
+        return SequenceDetector(rule, kind, factory)
+    if isinstance(kind, NewValue):
+        return NewValueDetector(rule, kind, factory)
     raise TypeError(f"unsupported rule kind {type(kind).__name__}")
 
 
