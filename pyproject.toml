@@ -49,6 +49,10 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "N", "C4", "PTH", "RET", 
 [tool.ruff.lint.isort]
 known-first-party = ["argus"]
 
+[tool.ruff.lint.pep8-naming]
+# X is the conventional name for a feature matrix.
+extend-ignore-names = ["X"]
+
 [tool.mypy]
 strict = true
 python_version = "3.11"
