@@ -35,3 +35,18 @@ jobs:
         run: pytest
       - name: Build wheel
         run: python -m pip wheel . --no-deps -w dist
+
+  evaluation:
+    name: Evaluation report is reproducible
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install
+        run: python -m pip install -e .
+      - name: Regenerate docs/EVALUATION.md and compare
+        run: python scripts/evaluate.py --check
