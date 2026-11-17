@@ -171,38 +171,55 @@ def _row_label(tactic: str) -> str:
 def timeline(
     entries: Sequence[TimelineEntry], start: datetime, end: datetime, *, width: int = 960
 ) -> str:
-    """Kill-chain timeline: one row per tactic (in ATT&CK order), time on x."""
-    tactics = sorted(
-        {entry.tactic for entry in entries}, key=lambda t: (t == "anomaly", tactic_rank(t))
+    """Kill-chain timeline, time on x.
+
+    Every alert gets its own lane so overlapping alerts never hide each other.
+    Lanes are grouped by tactic in ATT&CK order; the tactic is named on the
+    first lane of its group and every lane names its rule.
+    """
+    lanes = sorted(
+        entries,
+        key=lambda e: (e.tactic == "anomaly", tactic_rank(e.tactic), e.ts, e.rule_id or ""),
     )
-    label_w, right, row_h = 150.0, 12.0, 24.0
-    height = row_h * len(tactics) + 30
-    plot_w = width - label_w - right
+    tactic_w, rule_w, right, row_h = 140.0, 200.0, 12.0, 22.0
+    left = tactic_w + rule_w
+    height = row_h * len(lanes) + 30
+    plot_w = width - left - right
     span = max((end - start).total_seconds(), 1.0)
     parts = [_open(width, height, "Incident timeline by ATT&CK tactic")]
-    for row, tactic in enumerate(tactics):
+    previous = None
+    for row, entry in enumerate(lanes):
         y = row * row_h
-        parts.append(
-            f'<line class="grid" x1="{label_w}" x2="{width - right}" '
-            f'y1="{y + row_h:.1f}" y2="{y + row_h:.1f}"/>'
-        )
-        parts.append(
-            f'<text class="row-label" x="{label_w - 10}" y="{y + 16:.1f}" text-anchor="end">'
-            f"{_e(_row_label(tactic))}</text>"
-        )
-        for entry in (e for e in entries if e.tactic == tactic):
-            x0 = label_w + plot_w * (entry.ts - start).total_seconds() / span
-            x1 = label_w + plot_w * (entry.end - start).total_seconds() / span
-            w = max(6.0, x1 - x0)
-            css = "anomaly" if entry.severity is None else f"sev-{entry.severity.label}"
-            tip = f"{entry.label} - {entry.ts:%Y-%m-%d %H:%M:%S} UTC, {entry.count:,} events"
-            if entry.technique:
-                tip += f", {entry.technique}"
+        if entry.tactic != previous:
+            if row:
+                parts.append(
+                    f'<line class="grid" x1="0" x2="{width - right}" y1="{y:.1f}" y2="{y:.1f}"/>'
+                )
             parts.append(
-                f'<rect class="span {css}" x="{min(x0, width - right - w):.1f}" y="{y + 6:.1f}" '
-                f'width="{w:.1f}" height="12" rx="3"><title>{_e(tip)}</title></rect>'
+                f'<text class="row-label" x="0" y="{y + 15:.1f}">'
+                f"{_e(_row_label(entry.tactic))}</text>"
             )
-    axis_y = row_h * len(tactics)
+            previous = entry.tactic
+        name = entry.rule_id or "isolation-forest"
+        parts.append(
+            f'<text class="rule-label" x="{left - 10}" y="{y + 15:.1f}" text-anchor="end">'
+            f"{_e(name)}</text>"
+        )
+        x0 = left + plot_w * (entry.ts - start).total_seconds() / span
+        x1 = left + plot_w * (entry.end - start).total_seconds() / span
+        w = max(6.0, x1 - x0)
+        css = "anomaly" if entry.severity is None else f"sev-{entry.severity.label}"
+        tip = f"{entry.label}: {entry.ts:%Y-%m-%d %H:%M:%S} UTC, {entry.count:,} events"
+        if entry.technique:
+            tip += f", {entry.technique}"
+        if entry.severity is not None:
+            tip += f", {entry.severity.label}"
+        parts.append(
+            f'<rect class="span {css}" x="{min(x0, width - right - w):.1f}" y="{y + 5:.1f}" '
+            f'width="{w:.1f}" height="12" rx="3"><title>{_e(tip)}</title></rect>'
+        )
+    label_w = left
+    axis_y = row_h * len(lanes)
     parts.append(
         f'<line class="axis" x1="{label_w}" x2="{width - right}" y1="{axis_y}" y2="{axis_y}"/>'
     )
